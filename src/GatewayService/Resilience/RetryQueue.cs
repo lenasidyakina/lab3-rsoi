@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Options;
 
 namespace GatewayService.Resilience;
 
@@ -7,10 +8,6 @@ public sealed class RetryQueueOptions
     public TimeSpan RetryInterval { get; set; } = TimeSpan.FromSeconds(10);
 }
 
-/// <summary>
-/// In-memory очередь запросов, которые не удалось выполнить (например, decrement в Loyalty Service).
-/// Запросы повторяются по порядку, пока не завершатся успехом.
-/// </summary>
 public sealed class RetryQueue(IServiceScopeFactory scopeFactory, ILogger<RetryQueue> logger)
 {
     private sealed record Item(string Description, Func<IServiceProvider, Task> Action);
@@ -26,7 +23,6 @@ public sealed class RetryQueue(IServiceScopeFactory scopeFactory, ILogger<RetryQ
         logger.LogWarning("Queued for retry: {Description}", description);
     }
 
-    /// <summary>Попытаться выполнить накопленные запросы. Останавливается на первой ошибке, сохраняя порядок.</summary>
     public async Task ProcessAsync(CancellationToken ct = default)
     {
         if (_queue.IsEmpty)
@@ -58,7 +54,7 @@ public sealed class RetryQueue(IServiceScopeFactory scopeFactory, ILogger<RetryQ
     }
 }
 
-public sealed class RetryQueueWorker(RetryQueue queue, Microsoft.Extensions.Options.IOptions<RetryQueueOptions> options)
+public sealed class RetryQueueWorker(RetryQueue queue, IOptions<RetryQueueOptions> options)
     : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

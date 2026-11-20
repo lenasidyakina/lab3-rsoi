@@ -8,7 +8,6 @@ public sealed class ServiceUnavailableException(string service, Exception? inner
 
 public static class ServiceFailure
 {
-    /// <summary>Сервис не ответил: сетевая ошибка, таймаут или 5xx.</summary>
     public static bool Is(Exception e) => e switch
     {
         ServiceUnavailableException => true,
@@ -17,7 +16,6 @@ public static class ServiceFailure
         _ => false
     };
 
-    /// <summary>Вызов без Circuit Breaker (для изменяющих операций): ошибка сервиса → ServiceUnavailableException.</summary>
     public static async Task<T> Wrap<T>(string service, Func<Task<T>> action)
     {
         try

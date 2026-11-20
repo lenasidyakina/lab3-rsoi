@@ -15,7 +15,6 @@ public class GatewayController(
     RetryQueue retryQueue,
     ILogger<GatewayController> logger) : ControllerBase
 {
-    // Reservation Service — критичный источник: при недоступности 503 (ServiceUnavailableFilter)
     [HttpGet("hotels")]
     public async Task<ActionResult<PaginationResponse>> GetHotels([FromQuery] int page = 1, [FromQuery] int size = 10)
     {
@@ -56,31 +55,26 @@ public class GatewayController(
             return BadRequest(new ValidationErrorResponse("Validation failed",
                 [new ErrorDescription("endDate", "endDate must be after startDate")]));
 
-        // 1. Проверка отеля (Reservation Service недоступен → ошибка)
         var hotel = await reservationClient.GetHotelAsync(request.HotelUid);
         if (hotel is null)
             return NotFound(new ErrorResponse("Hotel not found"));
 
-        // 2. Скидка из Loyalty Service (недоступен → ошибка, ничего ещё не изменено)
         await retryQueue.ProcessAsync();
         var loyalty = await loyaltyClient.GetAsync(username);
         var price = Pricing.Calculate(hotel.Price, Pricing.Nights(request.StartDate, request.EndDate), loyalty.Discount);
 
-        // 3. Создание оплаты (Payment Service недоступен → ошибка)
         var payment = await paymentClient.CreateAsync(price);
 
-        // 4. Увеличение счётчика бронирований; при ошибке — откат оплаты
         try
         {
             await loyaltyClient.IncrementAsync(username);
         }
         catch (ServiceUnavailableException)
         {
-            await RollbackPaymentAsync(payment.PaymentUid);
+            await CancelPaymentOrEnqueueAsync(payment.PaymentUid);
             throw;
         }
 
-        // 5. Создание бронирования; при ошибке — откат оплаты и счётчика лояльности
         ReservationDto reservation;
         try
         {
@@ -89,7 +83,7 @@ public class GatewayController(
         }
         catch (ServiceUnavailableException)
         {
-            await RollbackPaymentAsync(payment.PaymentUid);
+            await CancelPaymentOrEnqueueAsync(payment.PaymentUid);
             await DecrementLoyaltyOrEnqueueAsync(username);
             throw;
         }
@@ -113,9 +107,8 @@ public class GatewayController(
             return NotFound(new ErrorResponse("Reservation not found"));
 
         await reservationClient.CancelReservationAsync(reservationUid, username);
-        await paymentClient.CancelAsync(reservation.PaymentUid);
+        await CancelPaymentOrEnqueueAsync(reservation.PaymentUid);
 
-        // Loyalty Service недоступен → пользователю всё равно успех, запрос уходит в очередь на повтор
         await DecrementLoyaltyOrEnqueueAsync(username);
 
         return NoContent();
@@ -163,12 +156,12 @@ public class GatewayController(
         }
     }
 
-    private async Task RollbackPaymentAsync(Guid paymentUid)
+    private async Task CancelPaymentOrEnqueueAsync(Guid paymentUid)
     {
         try
         {
             await paymentClient.CancelAsync(paymentUid);
-            logger.LogInformation("Payment {PaymentUid} rolled back", paymentUid);
+            logger.LogInformation("Payment {PaymentUid} canceled", paymentUid);
         }
         catch (ServiceUnavailableException)
         {

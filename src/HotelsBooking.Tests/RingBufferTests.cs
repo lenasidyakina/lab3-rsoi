@@ -4,7 +4,6 @@ namespace HotelsBooking.Tests;
 
 public class RingBufferTests
 {
-    // моменты, когда Loyalty Service не ответил Gateway (ночь после деплоя)
     private static readonly DateTimeOffset FirstTimeout = new(2026, 11, 20, 3, 14, 27, TimeSpan.FromHours(3));
 
     private static DateTimeOffset At(int secondsAfterFirst) => FirstTimeout.AddSeconds(secondsAfterFirst);
@@ -42,7 +41,6 @@ public class RingBufferTests
         failures.Add(At(2));
         failures.Add(At(5));
 
-        // первые две ошибки «устарели» и выброшены из окна
         Assert.Equal(At(0), failures.RemoveOldest());
         Assert.Equal(At(2), failures.RemoveOldest());
 

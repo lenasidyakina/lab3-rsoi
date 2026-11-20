@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace GatewayService.Resilience;
 
-/// <summary>Критичный сервис недоступен → 503 { "message": "X Service unavailable" }.</summary>
 public sealed class ServiceUnavailableFilter : IExceptionFilter
 {
     public void OnException(ExceptionContext context)

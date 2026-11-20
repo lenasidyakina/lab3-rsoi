@@ -1,14 +1,9 @@
 namespace GatewayService.Resilience;
 
-/// <summary>
-/// Циклический буфер фиксированной ёмкости на массиве.
-/// При переполнении новый элемент затирает самый старый.
-/// Класс не потокобезопасен — синхронизация на стороне вызывающего (CircuitBreaker).
-/// </summary>
 public sealed class RingBuffer<T>
 {
     private readonly T[] _items;
-    private int _head; // индекс самого старого элемента
+    private int _head;
     private int _count;
 
     public RingBuffer(int capacity)
@@ -34,7 +29,7 @@ public sealed class RingBuffer<T>
         _items[tail] = item;
 
         if (IsFull)
-            _head = (_head + 1) % _items.Length; // затёрли самый старый — сдвигаем голову
+            _head = (_head + 1) % _items.Length;
         else
             _count++;
     }
@@ -55,7 +50,6 @@ public sealed class RingBuffer<T>
         _count = 0;
     }
 
-    /// <summary>Элементы от самого старого к самому новому.</summary>
     public IEnumerable<T> Items()
     {
         for (var i = 0; i < _count; i++)

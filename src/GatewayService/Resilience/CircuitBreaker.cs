@@ -9,31 +9,13 @@ public enum CircuitState
 
 public sealed class CircuitBreakerOptions
 {
-    /// <summary>N — сколько неудачных запросов подряд (в пределах окна) размыкают цепь.</summary>
     public int FailureThreshold { get; set; } = 3;
 
-    /// <summary>Окно, в котором учитываются ошибки. Более старые ошибки «забываются».</summary>
     public TimeSpan FailureWindow { get; set; } = TimeSpan.FromSeconds(30);
 
-    /// <summary>Сколько цепь остаётся разомкнутой, прежде чем пропустить пробный запрос.</summary>
     public TimeSpan OpenTimeout { get; set; } = TimeSpan.FromSeconds(3);
 }
 
-/// <summary>
-/// Circuit Breaker для одного удалённого сервиса.
-/// <para>
-/// Статистика ошибок хранится в памяти в циклическом буфере ёмкостью N (FailureThreshold),
-/// каждый элемент — timestamp неудачного запроса. Цепь размыкается, когда в буфере
-/// набралось N ошибок, и все они случились в пределах FailureWindow
-/// (т.е. учитывается и количество, и время).
-/// </para>
-/// <para>
-/// Closed   — запросы идут в сервис, ошибки пишутся в буфер.<br/>
-/// Open     — запрос в сервис не выполняется, сразу отдаётся fallback (N+1-й запрос).<br/>
-/// HalfOpen — по истечении OpenTimeout пропускается один пробный запрос к реальной системе:
-///            успех → Closed, ошибка → снова Open.
-/// </para>
-/// </summary>
 public sealed class CircuitBreaker
 {
     private readonly object _lock = new();
@@ -66,7 +48,6 @@ public sealed class CircuitBreaker
         }
     }
 
-    /// <summary>Количество ошибок, накопленных в текущем окне.</summary>
     public int FailureCount
     {
         get
@@ -79,11 +60,9 @@ public sealed class CircuitBreaker
         }
     }
 
-    /// <summary>Выполнить запрос; при недоступности сервиса — ServiceUnavailableException.</summary>
     public Task<T> ExecuteAsync<T>(Func<Task<T>> action) =>
         ExecuteAsync(action, () => throw new ServiceUnavailableException(Name));
 
-    /// <summary>Выполнить запрос; при недоступности сервиса или разомкнутой цепи — fallback.</summary>
     public async Task<T> ExecuteAsync<T>(Func<Task<T>> action, Func<T> fallback)
     {
         if (!TryAcquire())
@@ -105,7 +84,6 @@ public sealed class CircuitBreaker
         }
         catch
         {
-            // сервис ответил (например, 4xx) — значит он жив
             RecordSuccess();
             throw;
         }
@@ -133,7 +111,6 @@ public sealed class CircuitBreaker
                     return true;
 
                 case CircuitState.HalfOpen:
-                    // пока идёт пробный запрос, остальные получают fallback
                     if (_probeInFlight)
                         return false;
                     _probeInFlight = true;
@@ -171,7 +148,7 @@ public sealed class CircuitBreaker
                     return;
 
                 case CircuitState.Open:
-                    return; // запрос, начатый до размыкания — статистика уже не нужна
+                    return;
             }
 
             DropExpired(now);

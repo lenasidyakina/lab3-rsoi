@@ -2,7 +2,6 @@ using Microsoft.Extensions.Options;
 
 namespace GatewayService.Resilience;
 
-/// <summary>По одному Circuit Breaker на каждый сервис (singleton, статистика в памяти).</summary>
 public sealed class ServiceBreakers(
     IOptions<CircuitBreakerOptions> options, TimeProvider time, ILoggerFactory loggerFactory)
 {

@@ -10,12 +10,10 @@ public record ReservationResponse(
     DateOnly StartDate,
     DateOnly EndDate,
     string Status,
-    object Payment); // PaymentInfo или {} (fallback, если Payment Service недоступен)
+    object Payment);
 
-// Loyalty: LoyaltyInfoResponse или {} (fallback, если Loyalty Service недоступен)
 public record UserInfoResponse(List<ReservationResponse> Reservations, object Loyalty);
 
-/// <summary>Fallback-ответ: сериализуется в пустой JSON-объект {}.</summary>
 public sealed class EmptyObject
 {
     public static readonly EmptyObject Instance = new();

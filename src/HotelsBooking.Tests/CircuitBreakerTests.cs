@@ -14,7 +14,6 @@ public class CircuitBreakerTests
         public void Wait(double seconds) => Now = Now.AddSeconds(seconds);
     }
 
-    /// <summary>Заглушка Loyalty Service: можно «выключить» контейнер и посчитать, сколько запросов до него дошло.</summary>
     private sealed class FakeLoyaltyService
     {
         public bool IsStopped { get; set; }
@@ -35,7 +34,6 @@ public class CircuitBreakerTests
         }
     }
 
-    // fallback, который Gateway отдаёт вместо данных лояльности
     private static readonly LoyaltyInfoResponse Unknown = new("", 0, 0);
 
     private readonly ManualClock _clock = new();
@@ -69,7 +67,6 @@ public class CircuitBreakerTests
         Assert.Equal(CircuitState.Open, breaker.State);
         Assert.Equal(3, _loyalty.ReceivedRequests);
 
-        // N + 1: до сервиса запрос уже не доходит
         Assert.Same(Unknown, await AskLoyalty(breaker, "Timur Galiev"));
         Assert.Equal(3, _loyalty.ReceivedRequests);
     }
@@ -83,11 +80,42 @@ public class CircuitBreakerTests
         await AskLoyalty(breaker, "Ksenia Volkova");
         _clock.Wait(12);
         await AskLoyalty(breaker, "Timur Galiev");
-        _clock.Wait(25); // первая ошибка вышла за окно 30 секунд
+        _clock.Wait(25);
         await AskLoyalty(breaker, "Ksenia Volkova");
 
         Assert.Equal(CircuitState.Closed, breaker.State);
         Assert.Equal(2, breaker.FailureCount);
+    }
+
+    [Fact]
+    public async Task FailuresAtWindowEdge_StillCountTogether()
+    {
+        var breaker = CreateBreaker(failures: 3, windowSeconds: 30);
+        _loyalty.IsStopped = true;
+
+        await AskLoyalty(breaker, "Ksenia Volkova");
+        _clock.Wait(15);
+        await AskLoyalty(breaker, "Timur Galiev");
+        _clock.Wait(15);
+        await AskLoyalty(breaker, "Ksenia Volkova");
+
+        Assert.Equal(CircuitState.Open, breaker.State);
+    }
+
+    [Fact]
+    public async Task OpenTimeoutNotElapsed_ServiceIsNotDisturbed()
+    {
+        var breaker = CreateBreaker(failures: 2, openSeconds: 3);
+        _loyalty.IsStopped = true;
+        await AskLoyalty(breaker, "Timur Galiev");
+        await AskLoyalty(breaker, "Timur Galiev");
+
+        _loyalty.IsStopped = false;
+        _clock.Wait(2.9);
+
+        Assert.Same(Unknown, await AskLoyalty(breaker, "Ksenia Volkova"));
+        Assert.Equal(2, _loyalty.ReceivedRequests);
+        Assert.Equal(CircuitState.Open, breaker.State);
     }
 
     [Fact]
@@ -99,7 +127,7 @@ public class CircuitBreakerTests
         await AskLoyalty(breaker, "Timur Galiev");
         Assert.Equal(CircuitState.Open, breaker.State);
 
-        _loyalty.IsStopped = false; // docker compose start loyalty
+        _loyalty.IsStopped = false;
         _clock.Wait(3.4);
 
         var loyalty = await AskLoyalty(breaker, "Ksenia Volkova");
@@ -118,7 +146,7 @@ public class CircuitBreakerTests
         await AskLoyalty(breaker, "Timur Galiev");
         _clock.Wait(3.2);
 
-        await AskLoyalty(breaker, "Ksenia Volkova"); // пробный запрос тоже упал
+        await AskLoyalty(breaker, "Ksenia Volkova");
 
         Assert.Equal(CircuitState.Open, breaker.State);
         var requestsSoFar = _loyalty.ReceivedRequests;
