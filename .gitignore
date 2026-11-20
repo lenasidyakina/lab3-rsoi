@@ -1234,3 +1234,33 @@ buildNumber.properties
 .mvn/timing.properties
 # https://github.com/takari/maven-wrapper#usage-without-binary-jar
 .mvn/wrapper/maven-wrapper.jar
+# ---- .NET build output ----
+**/bin/
+**/obj/
+**/TestResults/
+*.trx
+coverage*.json
+coverage*.xml
+
+# ---- IDE (Rider / Visual Studio / VS Code) ----
+**/.idea/
+**/.vs/
+**/.vscode/
+*.user
+*.suo
+*.userprefs
+*.DotSettings.user
+
+# ---- local / temporary ----
+*.log
+.env
+.env.*
+newman/
+
+# ---- AI assistant files ----
+.claude/
+CLAUDE.md
+
+# ---- keep project scripts (template VirtualEnv rule "[Ss]cripts" would ignore them) ----
+!/scripts/
+!/postgres/scripts/

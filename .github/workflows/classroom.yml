@@ -17,7 +17,16 @@ jobs:
 
       - uses: docker/setup-buildx-action@v2
 
-      # TODO build and run unit tests
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build src/src.sln -c Release
+
+      - name: Unit tests
+        run: dotnet test src/HotelsBooking.Tests -c Release
 
       - name: Build images
         timeout-minutes: 10
@@ -31,15 +40,18 @@ jobs:
         env:
           WAIT_PORTS: 8080,8070,8060,8050
 
-      # TODO setup variant, service and port
+      - name: Install newman
+        run: npm install -g newman
 
       - name: Run API Tests
         timeout-minutes: 5
-        run: ./scripts/test-script.sh
+        run: |
+          chmod +x ./scripts/*.sh
+          ./scripts/test-script.sh
         env:
-          VARIANT: <variant>
-          SERVICE_NAME: <your service name>
-          PORT_NUMBER: <port number>
+          VARIANT: v2
+          SERVICE_NAME: loyalty
+          PORT_NUMBER: 8050
 
       - uses: education/autograding@v1
         id: autograder
