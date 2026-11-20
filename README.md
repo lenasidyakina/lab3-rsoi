@@ -62,11 +62,10 @@
 2. После того как все тесты успешно завершатся, в Github Classroom на Dashboard будет отмечено успешное выполнение
    тестов.
 
-### Варианты заданий
+### Вариант
 
-Распределение вариантов заданий аналогично [ЛР #2](https://github.com/bmstu-rsoi/lab2-template).
+Вариант 2: [Hotels Booking System](v2/README.md)
 
-1. [Flight Booking System](v1/README.md)
-2. [Hotels Booking System](v2/README.md)
-3. [Car Rental System](v3/README.md)
-4. [Library System](v4/README.md)
+```shell
+$ scripts/test-script.sh v2 loyalty 8050
+```

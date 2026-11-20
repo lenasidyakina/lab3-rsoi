@@ -1,0 +1,51 @@
+﻿### Loyalty health
+GET http://localhost:8050/manage/health
+
+### Loyalty Test Max
+GET http://localhost:8050/api/v1/loyalty
+X-User-Name: Test Max
+
+### Payment health
+GET http://localhost:8060/manage/health
+
+### Create payment
+POST http://localhost:8060/api/v1/payments
+Content-Type: application/json
+
+{ "price": 27000 }
+
+### Reservation health
+GET http://localhost:8070/manage/health
+
+### Hotels
+GET http://localhost:8070/api/v1/hotels?page=1&size=10
+
+### Gateway: отели
+GET http://localhost:8080/api/v1/hotels?page=1&size=10
+
+### Gateway: забронировать
+POST http://localhost:8080/api/v1/reservations
+Content-Type: application/json
+X-User-Name: Test Max
+
+{
+  "hotelUid": "049161bb-badd-4fa8-9d90-87c9a82b0668",
+  "startDate": "2021-10-08",
+  "endDate": "2021-10-11"
+}
+
+### Gateway: мои брони
+GET http://localhost:8080/api/v1/reservations
+X-User-Name: Test Max
+
+### Gateway: обо мне
+GET http://localhost:8080/api/v1/me
+X-User-Name: Test Max
+
+### Gateway: лояльность
+GET http://localhost:8080/api/v1/loyalty
+X-User-Name: Test Max
+
+### Gateway: отменить (вставьте reservationUid из ответа бронирования)
+DELETE http://localhost:8080/api/v1/reservations/422d417a-8595-43cd-a921-e682eb16094f
+X-User-Name: Test Max
